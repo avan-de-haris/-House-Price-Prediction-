@@ -148,5 +148,5 @@ The Flask web app has **3 tabs:**
 
 ## 📄 License
 
-This project was developed for academic purposes as a Final Semester
-Artificial Intelligence project.
+This project was developed for academic purposes as an 
+Artificial Intelligence Semester project.
