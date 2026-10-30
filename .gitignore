@@ -1,0 +1,9 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+.vscode/
+
+# Ignore heavy model/pickle artifacts if they exceed GitHub limits (optional)
+# models/*.pkl

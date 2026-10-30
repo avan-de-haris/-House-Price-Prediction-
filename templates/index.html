@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PriceIQ Pakistan — House Price Predictor</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
+<style>
+/* ── Reset & Variables ──────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:        #0b0e14;
+  --surface:   #111620;
+  --card:      #161c28;
+  --card2:     #1a2540;
+  --border:    #1f2a3d;
+  --border2:   #253555;
+  --accent:    #3b82f6;
+  --accent-g:  #10b981;
+  --accent-o:  #f59e0b;
+  --accent-r:  #ef4444;
+  --text:      #e2e8f0;
+  --text2:     #94a3b8;
+  --muted:     #64748b;
+  --code-bg:   #0d1117;
+  --r:         12px;
+
+  /* model colours */
+  --ridge:    #4C72B0;
+  --rf:       #55A868;
+  --gb:       #C44E52;
+  --voting:   #8172B2;
+  --stacking: #937860;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ── NAV ────────────────────────────────────────────── */
+nav {
+  position: sticky; top: 0; z-index: 200;
+  background: rgba(11,14,20,.95);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 2rem; height: 58px; gap: 1rem;
+}
+.nav-logo {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.05rem; font-weight: 800;
+  display: flex; align-items: center; gap: .45rem;
+  color: var(--text); text-decoration: none; white-space: nowrap;
+}
+.nav-logo em { color: var(--accent); font-style: normal; }
+
+/* ── tab switcher (center) ── */
+.nav-tabs {
+  display: flex; align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+  gap: 2px;
+}
+.nav-tab {
+  font-family: 'DM Sans', sans-serif;
+  font-size: .82rem; font-weight: 600;
+  padding: .38rem 1.1rem;
+  border-radius: 7px;
+  cursor: pointer; border: none;
+  background: transparent; color: var(--muted);
+  transition: all .2s;
+  display: flex; align-items: center; gap: .4rem;
+}
+.nav-tab:hover { color: var(--text); background: var(--card); }
+.nav-tab.active {
+  background: var(--accent); color: #fff;
+  box-shadow: 0 2px 10px rgba(59,130,246,.35);
+}
+
+.nav-right { display: flex; align-items: center; gap: .6rem; }
+.pill {
+  font-size: .68rem; font-weight: 600; letter-spacing: .8px;
+  text-transform: uppercase; padding: 3px 10px; border-radius: 99px;
+  border: 1px solid; display: inline-flex; align-items: center; gap: 5px;
+}
+.pill-blue  { background: rgba(59,130,246,.1);  color: var(--accent);   border-color: rgba(59,130,246,.25); }
+.pill-green { background: rgba(16,185,129,.1);  color: var(--accent-g); border-color: rgba(16,185,129,.25); }
+.blink { width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+         animation: blink 2s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+/* ── internal anchor links (dashboard only) ── */
+.nav-links { display: flex; gap: 1.4rem; list-style: none; }
+.nav-links a {
+  color: var(--muted); text-decoration: none;
+  font-size: .82rem; font-weight: 500; letter-spacing: .02em;
+  transition: color .2s;
+}
+.nav-links a:hover { color: var(--text); }
+#dash-nav { display: flex; }
+#predict-nav { display: none; }
+
+/* ── TAB CONTENT ────────────────────────────────────── */
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ═══════════════════════════════════════════════════════
+   DASHBOARD TAB
+═══════════════════════════════════════════════════════ */
+
+/* sections */
+section { padding: 4rem 2rem; max-width: 1200px; margin: 0 auto; }
+.section-label {
+  font-family: 'DM Mono', monospace;
+  font-size: .7rem; letter-spacing: .15em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: .6rem;
+}
+h2 {
+  font-family: 'Syne', sans-serif;
+  font-size: 2rem; font-weight: 800;
+  line-height: 1.15; margin-bottom: 1rem;
+}
+.lead { color: var(--muted); max-width: 640px; margin-bottom: 2.5rem; font-size: .95rem; }
+
+/* hero */
+.hero {
+  min-height: 90vh;
+  display: flex; flex-direction: column;
+  justify-content: center; align-items: flex-start;
+  padding: 2rem 3rem; position: relative; overflow: hidden;
+}
+.hero-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(59,130,246,.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,.06) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black, transparent);
+}
+.hero-glow {
+  position: absolute; width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(59,130,246,.15) 0%, transparent 70%);
+  top: -100px; right: -100px; pointer-events: none;
+}
+.tag-row { display: flex; gap: .6rem; flex-wrap: wrap; margin-bottom: 1.4rem; }
+.tag {
+  border: 1px solid var(--border); background: var(--surface);
+  padding: .25rem .7rem; border-radius: 6px;
+  font-size: .75rem; font-family: 'DM Mono', monospace; color: var(--muted);
+}
+.tag.accent { border-color: var(--accent); color: var(--accent); background: rgba(59,130,246,.08); }
+h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(2.4rem, 6vw, 4.5rem);
+  font-weight: 800; line-height: 1.08; margin-bottom: 1.2rem;
+}
+h1 .hl { color: var(--accent); }
+.hero-sub {
+  font-size: 1rem; color: var(--muted); max-width: 560px;
+  margin-bottom: 2.5rem; line-height: 1.7;
+}
+.btn-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; gap: .5rem;
+  padding: .65rem 1.4rem; border-radius: 8px;
+  font-size: .875rem; font-weight: 600;
+  cursor: pointer; text-decoration: none;
+  transition: all .2s; border: none;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #2563eb; transform: translateY(-1px); }
+.btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+/* metrics strip */
+.metrics-strip {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 1px; background: var(--border);
+  border: 1px solid var(--border); border-radius: 12px;
+  overflow: hidden; margin-top: 4rem;
+}
+.metric-cell {
+  background: var(--surface); padding: 1.2rem 1.6rem; position: relative;
+}
+.metric-cell::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 2px; background: var(--accent); opacity: 0; transition: opacity .3s;
+}
+.metric-cell:hover::before { opacity: 1; }
+.metric-value { font-family: 'Syne', sans-serif; font-size: 1.9rem; font-weight: 800; line-height: 1; margin-bottom: .3rem; }
+.metric-value.green { color: var(--accent-g); }
+.metric-value.blue  { color: var(--accent); }
+.metric-label { font-size: .78rem; color: var(--muted); font-weight: 500; }
+
+.divider { border: none; border-top: 1px solid var(--border); margin: 0; }
+
+/* file grid */
+.file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 1rem; }
+.file-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 1.3rem 1.4rem; transition: border-color .2s, transform .2s;
+  cursor: default; position: relative; overflow: hidden;
+}
+.file-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.file-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: .7rem; }
+.file-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+.file-step { font-family: 'DM Mono', monospace; font-size: .65rem; color: var(--muted); background: var(--surface); border: 1px solid var(--border); padding: .15rem .45rem; border-radius: 4px; }
+.file-name { font-family: 'DM Mono', monospace; font-size: .88rem; font-weight: 500; color: var(--accent); margin-bottom: .35rem; }
+.file-desc { font-size: .8rem; color: var(--muted); line-height: 1.5; }
+.file-exports { margin-top: .8rem; display: flex; flex-wrap: wrap; gap: .35rem; }
+.export-tag { font-family: 'DM Mono', monospace; font-size: .68rem; background: rgba(59,130,246,.1); color: var(--accent); border: 1px solid rgba(59,130,246,.25); padding: .15rem .5rem; border-radius: 4px; }
+
+/* flow diagram */
+.flow-diagram {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: .5rem; margin: 2rem 0; padding: 1.2rem 1.5rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; font-family: 'DM Mono', monospace; font-size: .8rem;
+}
+.flow-node { background: var(--card); border: 1px solid var(--border); padding: .35rem .8rem; border-radius: 6px; color: var(--accent); }
+.flow-arrow { color: var(--muted); font-size: .9rem; }
+
+/* pipeline steps */
+.steps { display: flex; flex-direction: column; gap: 1.5rem; }
+.step { display: grid; grid-template-columns: 56px 1fr; gap: 1.2rem; align-items: start; }
+.step-num {
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'DM Mono', monospace; font-size: .85rem; font-weight: 500;
+  background: var(--surface); border: 1px solid var(--border); color: var(--accent);
+  flex-shrink: 0; margin-top: .1rem;
+}
+.step-content h3 { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: .3rem; }
+.step-content p { font-size: .85rem; color: var(--muted); }
+.step-file { display: inline-flex; align-items: center; gap: .3rem; font-family: 'DM Mono', monospace; font-size: .72rem; color: var(--accent-g); margin-top: .4rem; }
+
+/* model cards */
+.model-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+.model-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.3rem; border-top: 3px solid transparent; transition: transform .2s; }
+.model-card:hover { transform: translateY(-2px); }
+.model-card.winner { border-top-color: var(--accent-o); }
+.model-label { font-family: 'Syne', sans-serif; font-weight: 700; font-size: .95rem; margin-bottom: .8rem; display: flex; align-items: center; gap: .5rem; }
+.winner-badge { font-size: .65rem; background: var(--accent-o); color: #000; padding: .1rem .45rem; border-radius: 4px; font-family: 'DM Mono', monospace; font-weight: 600; }
+.metric-row { display: flex; justify-content: space-between; margin-bottom: .35rem; }
+.metric-k { font-size: .78rem; color: var(--muted); }
+.metric-v { font-family: 'DM Mono', monospace; font-size: .78rem; font-weight: 500; }
+.r2-bar { height: 4px; background: var(--border); border-radius: 2px; margin-top: .7rem; overflow: hidden; }
+.r2-fill { height: 100%; border-radius: 2px; transition: width .6s ease; }
+
+/* chart tabs */
+.chart-tabs { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.tab-btn {
+  padding: .45rem 1rem; border-radius: 8px; font-size: .8rem;
+  cursor: pointer; border: 1px solid var(--border);
+  background: var(--surface); color: var(--muted);
+  font-weight: 500; transition: all .2s;
+}
+.tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.chart-panel { display: none; }
+.chart-panel.active { display: block; }
+.chart-img { width: 100%; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); }
+.chart-caption { margin-top: .8rem; font-size: .82rem; color: var(--muted); line-height: 1.6; padding-left: .5rem; border-left: 2px solid var(--accent); }
+
+/* code block */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1rem 0; }
+.code-header { display: flex; align-items: center; justify-content: space-between; padding: .6rem 1rem; border-bottom: 1px solid var(--border); font-family: 'DM Mono', monospace; font-size: .75rem; color: var(--muted); }
+.code-dots { display: flex; gap: .35rem; }
+.dot { width: 11px; height: 11px; border-radius: 50%; }
+.dot.r { background: #ef4444; } .dot.y { background: #f59e0b; } .dot.g { background: #22c55e; }
+pre { padding: 1.2rem 1.4rem; overflow-x: auto; font-family: 'DM Mono', monospace; font-size: .8rem; line-height: 1.7; color: #c9d1d9; }
+.kw { color: #ff7b72; } .fn { color: #d2a8ff; } .st { color: #a5d6ff; } .cm { color: #8b949e; } .nm { color: #79c0ff; }
+
+/* ═══════════════════════════════════════════════════════
+   PREDICT TAB
+═══════════════════════════════════════════════════════ */
+
+.predict-hero {
+  text-align: center; padding: 52px 24px 36px;
+  position: relative; overflow: hidden;
+}
+.predict-hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(59,130,246,.14), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 20% 80%,  rgba(16,185,129,.07), transparent 60%);
+  pointer-events: none;
+}
+.hero-tag {
+  display: inline-block; font-size: .72rem; font-weight: 600;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 16px;
+  padding: 5px 16px; border-radius: 99px;
+  border: 1px solid rgba(59,130,246,.3);
+  background: rgba(59,130,246,.08);
+}
+.predict-hero h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  font-weight: 800; line-height: 1.1; margin-bottom: 16px;
+}
+.predict-hero h1 span { color: var(--accent); }
+.predict-hero p { color: var(--text2); font-size: 1.05rem; max-width: 500px; margin: 0 auto; }
+
+/* stat bar */
+.stat-bar {
+  display: flex; justify-content: center;
+  max-width: 700px; margin: 36px auto 0;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); overflow: hidden;
+}
+.stat { flex: 1; padding: 16px 20px; text-align: center; border-right: 1px solid var(--border); }
+.stat:last-child { border-right: none; }
+.stat-val { font-family: 'Syne', sans-serif; font-size: 1.25rem; font-weight: 800; }
+.stat-val.blue  { color: var(--accent); }
+.stat-val.green { color: var(--accent-g); }
+.stat-val.gold  { color: var(--accent-o); }
+.stat-lbl { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 2px; }
+
+/* main predict grid */
+.predict-main {
+  max-width: 1140px; margin: 0 auto;
+  padding: 36px 24px 80px;
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 28px; align-items: start;
+}
+
+/* form card */
+.form-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 32px;
+}
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 1rem; font-weight: 700;
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 22px; padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.form-group { display: flex; flex-direction: column; gap: 7px; }
+.form-group.full { grid-column: 1 / -1; }
+
+label { font-size: .73rem; font-weight: 600; color: var(--muted); letter-spacing: .5px; text-transform: uppercase; }
+select, input[type="number"] {
+  background: var(--surface); border: 1.5px solid var(--border);
+  color: var(--text); border-radius: 8px;
+  padding: 10px 14px; font-size: .92rem;
+  font-family: 'DM Sans', sans-serif; width: 100%; outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+select {
+  -webkit-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' viewBox='0 0 12 7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23475569' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 13px center;
+  padding-right: 38px; cursor: pointer;
+}
+select:focus, input[type="number"]:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+}
+select option { background: #1a2235; }
+
+/* slider */
+.slider-wrap { display: flex; flex-direction: column; gap: 8px; }
+.slider-track { display: flex; align-items: center; gap: 10px; }
+input[type="range"] {
+  flex: 1; -webkit-appearance: none; appearance: none;
+  height: 5px; border-radius: 3px;
+  background: var(--border2); outline: none; cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 20px; height: 20px;
+  border-radius: 50%; background: var(--accent); cursor: pointer;
+  box-shadow: 0 0 0 3px rgba(59,130,246,.25); transition: box-shadow .2s, transform .1s;
+}
+input[type="range"]::-webkit-slider-thumb:hover { box-shadow: 0 0 0 6px rgba(59,130,246,.2); transform: scale(1.1); }
+.slider-badge {
+  min-width: 42px; text-align: center;
+  background: rgba(59,130,246,.12); border: 1px solid rgba(59,130,246,.25);
+  color: var(--accent); border-radius: 6px; padding: 4px 8px; font-size: .9rem; font-weight: 700;
+}
+.slider-hint { font-size: .75rem; color: var(--muted); }
+
+/* predict button */
+.btn-predict {
+  margin-top: 26px; width: 100%;
+  background: var(--accent); color: #fff; border: none; border-radius: 10px;
+  padding: 15px 24px; font-family: 'Syne', sans-serif;
+  font-size: 1rem; font-weight: 700; cursor: pointer; letter-spacing: .3px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background .2s, transform .1s, box-shadow .2s;
+}
+.btn-predict:hover { background: #2563eb; box-shadow: 0 8px 28px rgba(59,130,246,.4); }
+.btn-predict:active { transform: scale(0.98); }
+.btn-predict.loading { opacity: .7; pointer-events: none; }
+.spinner { display: none; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
+.btn-predict.loading .spinner { display: block; }
+.btn-predict.loading .btn-arrow { display: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.error-box { display: none; margin-top: 12px; background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.25); color: #f87171; border-radius: 8px; padding: 10px 14px; font-size: .85rem; }
+
+/* right panel */
+.right-panel { display: flex; flex-direction: column; gap: 20px; position: sticky; top: 76px; }
+
+/* result card */
+.result-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 28px;
+  min-height: 230px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; position: relative; overflow: hidden;
+}
+.result-card::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 110%, rgba(16,185,129,.08), transparent);
+  pointer-events: none; opacity: 0; transition: opacity .4s;
+}
+.result-card.has-result::before { opacity: 1; }
+.idle-state { display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--muted); }
+.idle-icon { font-size: 2.8rem; opacity: .35; }
+.idle-state p { font-size: .88rem; }
+.result-inner { display: none; flex-direction: column; align-items: center; width: 100%; }
+.result-label { font-size: .7rem; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.price-main { font-family: 'Syne', sans-serif; font-size: clamp(1.5rem, 4vw, 2.2rem); font-weight: 800; color: var(--accent-g); line-height: 1.1; word-break: break-all; }
+.price-mil { font-size: .92rem; color: var(--text2); margin: 4px 0 20px; }
+.conf-box { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; text-align: left; }
+.conf-title { font-size: .68rem; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.conf-row { display: flex; justify-content: space-between; align-items: center; }
+.conf-row + .conf-row { margin-top: 8px; }
+.conf-key { font-size: .8rem; color: var(--text2); }
+.conf-val { font-size: .82rem; font-weight: 700; color: var(--accent-o); }
+
+/* info cards */
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.info-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 16px 18px; }
+.ic-icon { font-size: 1.5rem; margin-bottom: 6px; }
+.ic-label { font-size: .68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+.ic-val { font-family: 'Syne', sans-serif; font-size: .95rem; font-weight: 700; }
+.ic-val.blue  { color: var(--accent); }
+.ic-val.green { color: var(--accent-g); }
+
+/* tips */
+.tips-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 20px 22px; }
+.tips-title { font-family: 'Syne', sans-serif; font-size: .85rem; font-weight: 700; color: var(--accent); margin-bottom: 14px; }
+.tip { display: flex; gap: 10px; margin-bottom: 10px; font-size: .82rem; color: var(--text2); line-height: 1.55; }
+.tip-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 7px; }
+
+/* ── Shared footer ── */
+footer { border-top: 1px solid var(--border); text-align: center; padding: 2rem; font-size: .8rem; color: var(--muted); font-family: 'DM Mono', monospace; }
+footer span { color: var(--accent); }
+
+/* ── Animations ── */
+@keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+.fade-up { animation: fadeUp .5s ease both; }
+.delay-1 { animation-delay: .1s; } .delay-2 { animation-delay: .2s; } .delay-3 { animation-delay: .3s; }
+@keyframes popIn { 0%{transform:scale(.8);opacity:0} 100%{transform:scale(1);opacity:1} }
+.pop { animation: popIn .35s cubic-bezier(.34,1.56,.64,1) forwards; }
+
+/* ── Responsive ── */
+@media (max-width: 860px) { .predict-main { grid-template-columns: 1fr; } }
+@media (max-width: 700px) {
+  .metrics-strip { grid-template-columns: 1fr 1fr; }
+  h1 { font-size: 2rem; }
+  .hero { padding: 2rem 1.2rem; }
+  section { padding: 3rem 1.2rem; }
+  nav { padding: 0 1rem; gap: .5rem; }
+  .nav-links { display: none !important; }
+  .nav-tabs { padding: 3px; }
+  .nav-tab { padding: .3rem .7rem; font-size: .75rem; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   DATASET TAB
+═══════════════════════════════════════════════════════ */
+.ds-page { max-width: 1340px; margin: 0 auto; padding: 2.5rem 2rem 5rem; }
+
+/* hero strip */
+.ds-hero { text-align: center; padding: 3rem 2rem 2rem; position: relative; }
+.ds-hero::before { content:''; position:absolute; inset:0; background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(59,130,246,.1), transparent); pointer-events:none; }
+.ds-hero h2 { font-family:'Syne',sans-serif; font-size:clamp(1.6rem,4vw,2.6rem); font-weight:800; margin-bottom:.6rem; }
+.ds-hero h2 span { color:var(--accent); }
+.ds-hero p { color:var(--muted); font-size:.95rem; max-width:500px; margin:0 auto; }
+
+/* summary stat cards */
+.ds-stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:1.8rem; }
+.ds-stat-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:1.1rem 1.4rem; position:relative; overflow:hidden; transition:transform .2s; }
+.ds-stat-card:hover { transform:translateY(-2px); }
+.ds-stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--accent); opacity:0; transition:opacity .3s; }
+.ds-stat-card:hover::before { opacity:1; }
+.ds-sc-icon { font-size:1.4rem; margin-bottom:.4rem; }
+.ds-sc-val  { font-family:'Syne',sans-serif; font-size:1.3rem; font-weight:800; line-height:1; }
+.ds-sc-val.blue { color:var(--accent); } .ds-sc-val.green { color:var(--accent-g); }
+.ds-sc-val.gold { color:var(--accent-o); } .ds-sc-val.red { color:var(--accent-r); }
+.ds-sc-lbl { font-size:.7rem; color:var(--muted); margin-top:.3rem; text-transform:uppercase; letter-spacing:.4px; }
+
+/* column pills */
+.ds-cols-row { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:1.6rem; }
+.ds-col-pill { font-family:'DM Mono',monospace; font-size:.72rem; background:rgba(59,130,246,.08); color:var(--accent); border:1px solid rgba(59,130,246,.2); padding:3px 10px; border-radius:5px; }
+
+/* breakdown bars */
+.ds-breakdown-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:2rem; }
+.ds-breakdown-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:1.2rem 1.4rem; }
+.ds-bc-title { font-family:'Syne',sans-serif; font-size:.85rem; font-weight:700; margin-bottom:1rem; color:var(--text); }
+.ds-bar-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.ds-bar-label { font-size:.74rem; color:var(--muted); min-width:115px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ds-bar-track { flex:1; height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
+.ds-bar-fill  { height:100%; border-radius:3px; transition:width .6s ease; }
+.ds-bar-count { font-family:'DM Mono',monospace; font-size:.7rem; color:var(--muted); min-width:40px; text-align:right; }
+
+/* toolbar */
+.ds-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:1rem; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px 16px; }
+.ds-toolbar-title { font-family:'Syne',sans-serif; font-size:.9rem; font-weight:700; white-space:nowrap; }
+.ds-select { background:var(--surface); border:1.5px solid var(--border); color:var(--text); border-radius:8px; padding:7px 30px 7px 12px; font-size:.82rem; font-family:'DM Sans',sans-serif; outline:none; cursor:pointer; -webkit-appearance:none; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; transition:border-color .2s; }
+.ds-select:focus { border-color:var(--accent); }
+.ds-search { flex:1; min-width:160px; background:var(--surface); border:1.5px solid var(--border); color:var(--text); border-radius:8px; padding:7px 12px; font-size:.82rem; font-family:'DM Sans',sans-serif; outline:none; transition:border-color .2s; }
+.ds-search:focus { border-color:var(--accent); }
+.ds-search::placeholder { color:var(--muted); }
+.ds-count-badge { font-family:'DM Mono',monospace; font-size:.74rem; background:rgba(59,130,246,.1); color:var(--accent); border:1px solid rgba(59,130,246,.25); padding:5px 12px; border-radius:6px; white-space:nowrap; }
+
+/* table */
+.ds-table-wrap { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.ds-table { width:100%; border-collapse:collapse; font-size:.82rem; }
+.ds-table thead th { background:var(--surface); padding:11px 14px; text-align:left; font-size:.68rem; font-weight:600; letter-spacing:.8px; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--border); white-space:nowrap; cursor:pointer; user-select:none; transition:color .2s; }
+.ds-table thead th:hover { color:var(--accent); }
+.ds-table tbody tr { border-bottom:1px solid var(--border); transition:background .12s; }
+.ds-table tbody tr:last-child { border-bottom:none; }
+.ds-table tbody tr:hover { background:rgba(59,130,246,.05); }
+.ds-table td { padding:10px 14px; color:var(--text); vertical-align:middle; }
+.ds-table td.price { font-family:'DM Mono',monospace; color:var(--accent-g); font-weight:600; white-space:nowrap; }
+.ds-badge { display:inline-block; font-size:.67rem; font-weight:600; padding:2px 8px; border-radius:4px; border:1px solid; }
+.ds-badge-house  { background:rgba(59,130,246,.1);  color:var(--accent);   border-color:rgba(59,130,246,.25); }
+.ds-badge-flat   { background:rgba(16,185,129,.1);  color:var(--accent-g); border-color:rgba(16,185,129,.25); }
+.ds-badge-farm   { background:rgba(139,92,246,.1);  color:#a78bfa;         border-color:rgba(139,92,246,.25); }
+.ds-badge-lower  { background:rgba(245,158,11,.1);  color:var(--accent-o); border-color:rgba(245,158,11,.25); }
+.ds-badge-upper  { background:rgba(245,158,11,.1);  color:var(--accent-o); border-color:rgba(245,158,11,.25); }
+.ds-badge-pent   { background:rgba(236,72,153,.1);  color:#f472b6;         border-color:rgba(236,72,153,.25); }
+.ds-badge-room   { background:rgba(100,116,139,.1); color:var(--muted);    border-color:rgba(100,116,139,.25); }
+
+/* skeleton */
+.ds-skel { height:13px; border-radius:5px; background:linear-gradient(90deg,var(--surface) 25%,var(--card2) 50%,var(--surface) 75%); background-size:200% 100%; animation:shimmer 1.4s infinite; }
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* pagination */
+.ds-pagination { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-top:1px solid var(--border); flex-wrap:wrap; gap:10px; }
+.ds-pag-info { font-size:.76rem; color:var(--muted); font-family:'DM Mono',monospace; }
+.ds-pag-btns { display:flex; gap:4px; }
+.ds-pag-btn { min-width:34px; height:34px; border-radius:7px; background:var(--surface); border:1px solid var(--border); color:var(--text); font-size:.8rem; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; font-family:'DM Mono',monospace; }
+.ds-pag-btn:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
+.ds-pag-btn:disabled { opacity:.3; cursor:not-allowed; }
+.ds-pag-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+@media(max-width:900px){ .ds-stat-grid{grid-template-columns:1fr 1fr} .ds-breakdown-grid{grid-template-columns:1fr} }
+@media(max-width:600px){ .ds-table{font-size:.74rem} .ds-table td,.ds-table th{padding:8px 10px} }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     STICKY NAV
+══════════════════════════════════════════════════════ -->
+<nav>
+  <a class="nav-logo" href="#">🏠 Price<em>IQ</em> Pakistan</a>
+
+  <!-- Internal dashboard anchor links -->
+  <ul class="nav-links" id="dash-nav">
+    <li><a href="#structure"  onclick="dashAnchor(event,'structure')">Files</a></li>
+    <li><a href="#pipeline"   onclick="dashAnchor(event,'pipeline')">Pipeline</a></li>
+    <li><a href="#models"     onclick="dashAnchor(event,'models')">Models</a></li>
+    <li><a href="#charts"     onclick="dashAnchor(event,'charts')">Charts</a></li>
+    <li><a href="#run"        onclick="dashAnchor(event,'run')">Run</a></li>
+  </ul>
+
+  <!-- Tab switcher -->
+  <div class="nav-tabs">
+    <button class="nav-tab active" id="btn-dashboard" onclick="switchTab('dashboard')">
+      📊 Dashboard
+    </button>
+    <button class="nav-tab" id="btn-dataset" onclick="switchTab('dataset')">
+      🗃️ Dataset
+    </button>
+    <button class="nav-tab" id="btn-predict" onclick="switchTab('predict')">
+      🏠 Predict Price
+    </button>
+  </div>
+
+  <div class="nav-right">
+    <span class="pill pill-green"><span class="blink"></span> Live Model</span>
+    <span class="pill pill-blue">R² 86.56%</span>
+  </div>
+</nav>
+
+
+<!-- ══════════════════════════════════════════════════════
+     TAB 1 — DASHBOARD
+══════════════════════════════════════════════════════ -->
+<div id="tab-dashboard" class="tab-content active">
+
+  <!-- HERO -->
+  <section class="hero" id="hero">
+    <div class="hero-grid"></div>
+    <div class="hero-glow"></div>
+    <div class="tag-row fade-up">
+      <span class="tag accent">Python 3</span>
+      <span class="tag">Scikit-learn</span>
+      <span class="tag">Ensemble Learning</span>
+      <span class="tag">Zameen.com Dataset</span>
+      <span class="tag">168,446 records</span>
+    </div>
+    <h1 class="fade-up delay-1">House Price<br><span class="hl">Prediction</span> System</h1>
+    <p class="hero-sub fade-up delay-2">
+      A fully modular AI pipeline for predicting Pakistani real estate prices using
+      Random Forest, Gradient Boosting, Ridge Regression, and two Ensemble methods —
+      Voting and Stacking Regressors.
+    </p>
+    <div class="btn-row fade-up delay-3">
+      <button class="btn btn-primary" onclick="switchTab('predict')">🏠 Try the Predictor</button>
+      <a class="btn btn-ghost" href="#structure" onclick="dashAnchor(event,'structure')">📁 File Structure</a>
+      <a class="btn btn-ghost" href="#charts"    onclick="dashAnchor(event,'charts')">📊 View Charts</a>
+    </div>
+    <div class="metrics-strip fade-up delay-3">
+      <div class="metric-cell"><div class="metric-value blue">77,027</div><div class="metric-label">Clean Records Used</div></div>
+      <div class="metric-cell"><div class="metric-value green">0.87</div><div class="metric-label">Best R² Score</div></div>
+      <div class="metric-cell"><div class="metric-value" style="color:var(--accent-o)">5</div><div class="metric-label">Models Trained</div></div>
+      <div class="metric-cell"><div class="metric-value" style="color:var(--accent-r)">2.37M</div><div class="metric-label">Best MAE (PKR)</div></div>
+    </div>
+  </section>
+
+  <hr class="divider"/>
+
+  <!-- FILE STRUCTURE -->
+  <section id="structure">
+    <div class="section-label">Project Layout</div>
+    <h2>Modular File Structure</h2>
+    <p class="lead">Each task lives in its own Python file. They all import from
+      <code style="color:var(--accent)">config.py</code> and are orchestrated by
+      <code style="color:var(--accent-g)">main.py</code>.
+    </p>
+    <div class="flow-diagram">
+      <span class="flow-node">config.py</span>
+      <span class="flow-arrow">↓ imported by all</span>
+      <span class="flow-node">data_loader.py</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node">preprocessing.py</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node">model_training.py</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node">evaluation.py</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node">visualisation.py</span>
+      <span class="flow-arrow">↑ all called by</span>
+      <span class="flow-node" style="color:var(--accent-g)">main.py</span>
+    </div>
+    <div class="file-grid">
+      <div class="file-card">
+        <div class="file-header"><div class="file-icon" style="background:rgba(251,191,36,.1)">⚙️</div><span class="file-step">Core</span></div>
+        <div class="file-name">config.py</div>
+        <div class="file-desc">Central configuration — dataset path, cleaning thresholds, model hyper-parameters, colour palette. Change once, affects everything.</div>
+        <div class="file-exports"><span class="export-tag">DATASET_PATH</span><span class="export-tag">FEATURE_COLS</span><span class="export-tag">RF_PARAMS</span><span class="export-tag">GB_PARAMS</span></div>
+      </div>
+      <div class="file-card">
+        <div class="file-header"><div class="file-icon" style="background:rgba(59,130,246,.1)">📂</div><span class="file-step">Step 1</span></div>
+        <div class="file-name">data_loader.py</div>
+        <div class="file-desc">Loads raw CSV from disk, prints shape, column list, missing-value summary, and first 3 rows. Returns a raw DataFrame.</div>
+        <div class="file-exports"><span class="export-tag">load_data()</span></div>
+      </div>
+      <div class="file-card">
+        <div class="file-header"><div class="file-icon" style="background:rgba(16,185,129,.1)">🧹</div><span class="file-step">Step 2 &amp; 3</span></div>
+        <div class="file-name">preprocessing.py</div>
+        <div class="file-desc">Filters For Sale listings, removes price/area outliers, drops useless columns, label-encodes categories. Returns X, y, df_encoded.</div>
+        <div class="file-exports"><span class="export-tag">clean_data()</span><span class="export-tag">encode_features()</span></div>
+      </div>
+      <div class="file-card">
+        <div class="file-header"><div class="file-icon" style="background:rgba(139,92,246,.1)">🤖</div><span class="file-step">Step 4–6</span></div>
+        <div class="file-name">model_training.py</div>
+        <div class="file-desc">80/20 split, trains Ridge, Random Forest, Gradient Boosting, then Voting Regressor and Stacking Regressor ensembles.</div>
+        <div class="file-exports"><span class="export-tag">split_data()</span><span class="export-tag">train_individual_models()</span><span class="export-tag">train_ensemble_models()</span></div>
+      </div>
+      <div class="file-card">
+        <div class="file-header"><div class="file-icon" style="background:rgba(245,158,11,.1)">📋</div><span class="file-step">Step 7</span></div>
+        <div class="file-name">evaluation.py</div>
+        <div class="file-desc">Builds a metrics DataFrame (MAE, MSE, RMSE, R²) for all 5 models, prints a comparison table, and crowns the best model.</div>
+        <div class="file-exports"><span class="export-tag">build_summary()</span><span class="export-tag">print_summary()</span></div>
+      </div>
+      <div class="file-card">
+        <div class="file-header"><div class="file-icon" style="background:rgba(236,72,153,.1)">📈</div><span class="file-step">Step 8</span></div>
+        <div class="file-name">visualisation.py</div>
+        <div class="file-desc">Saves all 5 publication-quality PNG charts — EDA, model comparison, actual vs predicted, feature importance, residuals.</div>
+        <div class="file-exports"><span class="export-tag">plot_eda()</span><span class="export-tag">plot_model_comparison()</span><span class="export-tag">plot_actual_vs_predicted()</span><span class="export-tag">plot_feature_importance()</span><span class="export-tag">plot_residuals()</span></div>
+      </div>
+      <div class="file-card" style="border-color:var(--accent-g);grid-column:span 2">
+        <div class="file-header"><div class="file-icon" style="background:rgba(16,185,129,.15)">🚀</div><span class="file-step" style="color:var(--accent-g);border-color:var(--accent-g)">Master Runner</span></div>
+        <div class="file-name" style="color:var(--accent-g)">main.py</div>
+        <div class="file-desc">Single entry point. Imports and calls every module in order — just run <code style="color:var(--accent)">python main.py</code> to execute the full pipeline end-to-end.</div>
+        <div class="file-exports"><span class="export-tag" style="color:var(--accent-g);border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.08)">run_pipeline()</span></div>
+      </div>
+      <div class="file-card">
+        <div class="file-header"><div class="file-icon" style="background:rgba(255,255,255,.05)">🌐</div><span class="file-step">Frontend</span></div>
+        <div class="file-name" style="color:#f0abfc">templates/index.html</div>
+        <div class="file-desc">This unified dashboard + predictor UI. Served by Flask at <code style="color:var(--accent)">http://localhost:5000</code>.</div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider"/>
+
+  <!-- PIPELINE -->
+  <section id="pipeline">
+    <div class="section-label">How It Works</div>
+    <h2>Full Pipeline Walkthrough</h2>
+    <p class="lead">Every step is isolated in its own file but passes data cleanly to the next.</p>
+    <div class="steps">
+      <div class="step"><div class="step-num">01</div><div class="step-content"><h3>Load Dataset</h3><p>Read 168,446 rows from the Zameen.com CSV. Print column list, dtypes, and missing value counts so you know exactly what you're working with before touching the data.</p><span class="step-file">📄 data_loader.py → load_data()</span></div></div>
+      <div class="step"><div class="step-num">02</div><div class="step-content"><h3>Data Cleaning</h3><p>Filter For Sale listings only → remove price outliers (1st–99th percentile) → keep only Marla area type → cap bedrooms and baths at 1–15 → drop 9 irrelevant columns → final shape: 77,027 rows.</p><span class="step-file">📄 preprocessing.py → clean_data()</span></div></div>
+      <div class="step"><div class="step-num">03</div><div class="step-content"><h3>Feature Engineering</h3><p>Label-encode 5 categorical columns. Select 10 features. Separate feature matrix X from target vector y (price).</p><span class="step-file">📄 preprocessing.py → encode_features()</span></div></div>
+      <div class="step"><div class="step-num">04</div><div class="step-content"><h3>Train / Test Split</h3><p>80% training (61,621 samples) and 20% testing (15,406 samples). StandardScaler applied separately for Ridge Regression to avoid data leakage.</p><span class="step-file">📄 model_training.py → split_data()</span></div></div>
+      <div class="step"><div class="step-num">05</div><div class="step-content"><h3>Individual Model Training</h3><p>Three algorithms: Ridge Regression (linear baseline), Random Forest (100 trees, depth 15), and Gradient Boosting (200 estimators, lr 0.1).</p><span class="step-file">📄 model_training.py → train_individual_models()</span></div></div>
+      <div class="step"><div class="step-num">06</div><div class="step-content"><h3>Ensemble Learning</h3><p><strong>Voting Regressor</strong> — averages RF and GB predictions. <strong>Stacking Regressor</strong> — RF + GB as base learners, Ridge as meta-learner via 3-fold CV.</p><span class="step-file">📄 model_training.py → train_ensemble_models()</span></div></div>
+      <div class="step"><div class="step-num">07</div><div class="step-content"><h3>Evaluation &amp; Comparison</h3><p>Side-by-side metrics table: MAE, MSE, RMSE (in PKR millions), and R² for all 5 models. Best model identified automatically.</p><span class="step-file">📄 evaluation.py → print_summary()</span></div></div>
+      <div class="step"><div class="step-num">08</div><div class="step-content"><h3>Visualisations</h3><p>5 publication-quality PNG charts saved to the outputs/ folder: EDA, model comparison, actual vs predicted, feature importance, residuals.</p><span class="step-file">📄 visualisation.py → generate_all()</span></div></div>
+    </div>
+  </section>
+
+  <hr class="divider"/>
+
+  <!-- MODELS -->
+  <section id="models">
+    <div class="section-label">Results</div>
+    <h2>Model Performance</h2>
+    <p class="lead">All metrics measured on the 15,406-sample held-out test set.</p>
+    <div class="model-cards">
+      <div class="model-card"><div class="model-label" style="color:var(--ridge)">⬤ Ridge Regression</div><div class="metric-row"><span class="metric-k">MAE</span><span class="metric-v">5.35 M PKR</span></div><div class="metric-row"><span class="metric-k">RMSE</span><span class="metric-v">9.14 M PKR</span></div><div class="metric-row"><span class="metric-k">R²</span><span class="metric-v">0.5287</span></div><div class="r2-bar"><div class="r2-fill" style="width:52.87%;background:var(--ridge)"></div></div></div>
+      <div class="model-card"><div class="model-label" style="color:var(--rf)">⬤ Random Forest</div><div class="metric-row"><span class="metric-k">MAE</span><span class="metric-v">2.31 M PKR</span></div><div class="metric-row"><span class="metric-k">RMSE</span><span class="metric-v">4.97 M PKR</span></div><div class="metric-row"><span class="metric-k">R²</span><span class="metric-v">0.8610</span></div><div class="r2-bar"><div class="r2-fill" style="width:86.1%;background:var(--rf)"></div></div></div>
+      <div class="model-card"><div class="model-label" style="color:var(--gb)">⬤ Gradient Boosting</div><div class="metric-row"><span class="metric-k">MAE</span><span class="metric-v">2.58 M PKR</span></div><div class="metric-row"><span class="metric-k">RMSE</span><span class="metric-v">5.08 M PKR</span></div><div class="metric-row"><span class="metric-k">R²</span><span class="metric-v">0.8543</span></div><div class="r2-bar"><div class="r2-fill" style="width:85.43%;background:var(--gb)"></div></div></div>
+      <div class="model-card winner"><div class="model-label" style="color:var(--voting)">⬤ Voting Ensemble <span class="winner-badge">🏆 BEST</span></div><div class="metric-row"><span class="metric-k">MAE</span><span class="metric-v">2.37 M PKR</span></div><div class="metric-row"><span class="metric-k">RMSE</span><span class="metric-v">4.88 M PKR</span></div><div class="metric-row"><span class="metric-k">R²</span><span class="metric-v">0.8656</span></div><div class="r2-bar"><div class="r2-fill" style="width:86.56%;background:var(--accent-o)"></div></div></div>
+      <div class="model-card"><div class="model-label" style="color:var(--stacking)">⬤ Stacking Ensemble</div><div class="metric-row"><span class="metric-k">MAE</span><span class="metric-v">2.38 M PKR</span></div><div class="metric-row"><span class="metric-k">RMSE</span><span class="metric-v">4.93 M PKR</span></div><div class="metric-row"><span class="metric-k">R²</span><span class="metric-v">0.8628</span></div><div class="r2-bar"><div class="r2-fill" style="width:86.28%;background:var(--stacking)"></div></div></div>
+    </div>
+  </section>
+
+  <hr class="divider"/>
+
+  <!-- CHARTS -->
+  <section id="charts">
+    <div class="section-label">Visualisations</div>
+    <h2>Project Charts</h2>
+    <p class="lead">All charts are saved to the <code style="color:var(--accent)">outputs/</code> folder when you run the pipeline.</p>
+    <div class="chart-tabs">
+      <button class="tab-btn active" onclick="showChart('eda',this)">01 · EDA</button>
+      <button class="tab-btn" onclick="showChart('cmp',this)">02 · Model Comparison</button>
+      <button class="tab-btn" onclick="showChart('avp',this)">03 · Actual vs Predicted</button>
+      <button class="tab-btn" onclick="showChart('fi',this)">04 · Feature Importance</button>
+      <button class="tab-btn" onclick="showChart('res',this)">05 · Residual Analysis</button>
+    </div>
+    <div id="chart-eda" class="chart-panel active">
+      <img class="chart-img" src="/outputs/01_EDA.png" alt="EDA Chart" onerror="this.style.display='none';document.getElementById('err-eda').style.display='block'"/>
+      <div id="err-eda" style="display:none;padding:2rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;text-align:center;color:var(--muted)">📊 Run <code style="color:var(--accent)">python main.py</code> first — chart will appear here after the pipeline generates it.</div>
+      <p class="chart-caption">EDA overview: price distribution, median price by city, bedrooms vs price, property type counts, area vs price scatter, and correlation heatmap.</p>
+    </div>
+    <div id="chart-cmp" class="chart-panel">
+      <img class="chart-img" src="/outputs/02_Model_Comparison.png" alt="Model Comparison" onerror="this.style.display='none';document.getElementById('err-cmp').style.display='block'"/>
+      <div id="err-cmp" style="display:none;padding:2rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;text-align:center;color:var(--muted)">📊 Run <code style="color:var(--accent)">python main.py</code> to generate this chart.</div>
+      <p class="chart-caption">Side-by-side MAE, RMSE, and R² for all 5 models. Ensemble methods consistently outperform individual models.</p>
+    </div>
+    <div id="chart-avp" class="chart-panel">
+      <img class="chart-img" src="/outputs/03_Actual_vs_Predicted.png" alt="Actual vs Predicted" onerror="this.style.display='none';document.getElementById('err-avp').style.display='block'"/>
+      <div id="err-avp" style="display:none;padding:2rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;text-align:center;color:var(--muted)">📊 Run <code style="color:var(--accent)">python main.py</code> to generate this chart.</div>
+      <p class="chart-caption">Scatter plots for each model — points close to the red dashed line indicate accurate predictions. Tree-based models cluster tighter than Ridge.</p>
+    </div>
+    <div id="chart-fi" class="chart-panel">
+      <img class="chart-img" src="/outputs/04_Feature_Importance.png" alt="Feature Importance" onerror="this.style.display='none';document.getElementById('err-fi').style.display='block'"/>
+      <div id="err-fi" style="display:none;padding:2rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;text-align:center;color:var(--muted)">📊 Run <code style="color:var(--accent)">python main.py</code> to generate this chart.</div>
+      <p class="chart-caption">Gradient Boosting feature importances. Location, area size, and city are the strongest predictors of house price.</p>
+    </div>
+    <div id="chart-res" class="chart-panel">
+      <img class="chart-img" src="/outputs/05_Residual_Analysis.png" alt="Residual Analysis" onerror="this.style.display='none';document.getElementById('err-res').style.display='block'"/>
+      <div id="err-res" style="display:none;padding:2rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;text-align:center;color:var(--muted)">📊 Run <code style="color:var(--accent)">python main.py</code> to generate this chart.</div>
+      <p class="chart-caption">Residuals for the Stacking Ensemble. The distribution is centred near zero and symmetric — indicating no systematic bias.</p>
+    </div>
+  </section>
+
+  <hr class="divider"/>
+
+  <!-- HOW TO RUN -->
+  <section id="run">
+    <div class="section-label">Getting Started</div>
+    <h2>How to Run the Project</h2>
+    <p class="lead">Clone the folder, install dependencies, and run one command.</p>
+    <div class="code-block">
+      <div class="code-header"><div class="code-dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div><span>terminal — install dependencies</span></div>
+      <pre><span class="cm"># Install required libraries</span>
+pip install scikit-learn pandas numpy matplotlib seaborn flask</pre>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><div class="code-dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div><span>terminal — run Flask web app</span></div>
+      <pre><span class="cm"># Start the Flask server (Dashboard + Predictor)</span>
+python app.py
+
+<span class="cm"># Then open in browser</span>
+http://127.0.0.1:5000
+
+<span class="cm"># OR run the full ML pipeline first to generate charts</span>
+python main.py</pre>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><div class="code-dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div><span>app.py — add this route to serve chart images</span></div>
+      <pre><span class="kw">from</span> <span class="nm">flask</span> <span class="kw">import</span> <span class="fn">send_from_directory</span>
+
+<span class="cm"># Add this route so /outputs/ images load in the dashboard</span>
+<span class="nm">@app</span>.<span class="fn">route</span>(<span class="st">'/outputs/&lt;path:filename&gt;'</span>)
+<span class="kw">def</span> <span class="fn">serve_outputs</span>(filename):
+    <span class="kw">return</span> <span class="fn">send_from_directory</span>(<span class="st">'outputs'</span>, filename)</pre>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><div class="code-dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div><span>project folder — full file tree</span></div>
+      <pre>AI_Project_Updated/
+├── <span class="st">config.py</span>           <span class="cm"># ⚙️  all settings</span>
+├── <span class="st">data_loader.py</span>      <span class="cm"># 📂 step 1</span>
+├── <span class="st">preprocessing.py</span>    <span class="cm"># 🧹 step 2 &amp; 3</span>
+├── <span class="st">model_training.py</span>   <span class="cm"># 🤖 step 4–6</span>
+├── <span class="st">evaluation.py</span>       <span class="cm"># 📋 step 7</span>
+├── <span class="st">visualisation.py</span>    <span class="cm"># 📈 step 8</span>
+├── <span class="st">main.py</span>             <span class="cm"># 🚀 ML pipeline runner</span>
+├── <span class="st">app.py</span>              <span class="cm"># 🌐 Flask web server</span>
+├── <span class="st">predict.py</span>          <span class="cm"># 🔮 prediction endpoint</span>
+├── templates/
+│   └── <span class="st">index.html</span>      <span class="cm"># 📟 this unified UI</span>
+├── models/
+│   ├── voting_model.pkl
+│   ├── encoders.pkl
+│   └── feature_cols.pkl
+└── outputs/
+    ├── 01_EDA.png
+    ├── 02_Model_Comparison.png
+    ├── 03_Actual_vs_Predicted.png
+    ├── 04_Feature_Importance.png
+    └── 05_Residual_Analysis.png</pre>
+    </div>
+  </section>
+
+  <footer>
+    House Price Prediction · AI Final Semester Project ·
+    Dataset: <span>Zameen.com Pakistan</span> ·
+    Best Model: <span>Voting Ensemble R² = 0.87</span>
+  </footer>
+
+</div><!-- /tab-dashboard -->
+
+
+<!-- ══════════════════════════════════════════════════════
+     TAB 2 — PREDICT PRICE
+══════════════════════════════════════════════════════ -->
+<div id="tab-predict" class="tab-content">
+
+  <!-- Predict hero -->
+  <div class="predict-hero">
+    <div class="hero-tag">🎓 AI Final Semester Project</div>
+    <h1>Pakistan Real Estate<br><span>Price Predictor</span></h1>
+    <p>Powered by an ensemble of Random Forest + Gradient Boosting trained on 77,000+ listings from Zameen.com</p>
+    <div class="stat-bar">
+      <div class="stat"><div class="stat-val blue">77,027</div><div class="stat-lbl">Training Listings</div></div>
+      <div class="stat"><div class="stat-val green">86.56%</div><div class="stat-lbl">Model Accuracy (R²)</div></div>
+      <div class="stat"><div class="stat-val gold">5 Cities</div><div class="stat-lbl">Coverage</div></div>
+      <div class="stat"><div class="stat-val blue">5 Models</div><div class="stat-lbl">Ensemble</div></div>
+    </div>
+  </div>
+
+  <!-- Predict main grid -->
+  <div class="predict-main">
+
+    <!-- LEFT: form -->
+    <div class="form-card">
+      <div class="section-title"><span>🏗️</span> Enter Property Details</div>
+      <div class="form-grid">
+
+        <div class="form-group">
+          <label>Property Type</label>
+          <select id="property_type">
+            {% for pt in property_types %}
+            <option value="{{ pt }}" {% if pt == 'House' %}selected{% endif %}>{{ pt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>City</label>
+          <select id="city" onchange="onCityChange()">
+            {% for c in cities %}
+            <option value="{{ c }}" {% if c == 'Lahore' %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group full">
+          <label>Neighbourhood / Society</label>
+          <select id="location"></select>
+        </div>
+
+        <div class="form-group full">
+          <label>Area Size (Marla)</label>
+          <div class="slider-wrap">
+            <div class="slider-track">
+              <input type="range" id="area_size" min="1" max="20" step="0.5" value="5" oninput="syncSlider('area_size','area_size_val'); autoCategory()">
+              <div class="slider-badge" id="area_size_val">5</div>
+            </div>
+            <div class="slider-hint">Slide to set area — category below auto-updates</div>
+          </div>
+        </div>
+
+        <div class="form-group full">
+          <label>Area Category</label>
+          <select id="area_category">
+            {% for ac in area_categories %}
+            <option value="{{ ac }}">{{ ac }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Bedrooms</label>
+          <div class="slider-wrap">
+            <div class="slider-track">
+              <input type="range" id="bedrooms" min="1" max="10" step="1" value="3" oninput="syncSlider('bedrooms','bed_val')">
+              <div class="slider-badge" id="bed_val">3</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Bathrooms</label>
+          <div class="slider-wrap">
+            <div class="slider-track">
+              <input type="range" id="baths" min="1" max="8" step="1" value="2" oninput="syncSlider('baths','bath_val')">
+              <div class="slider-badge" id="bath_val">2</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /form-grid -->
+
+      <button class="btn-predict" id="predictBtn" onclick="doPrediction()">
+        <div class="spinner"></div>
+        <span class="btn-arrow">→</span>
+        <span id="btnText">Predict Price</span>
+      </button>
+      <div class="error-box" id="errorBox"></div>
+    </div><!-- /form-card -->
+
+    <!-- RIGHT: result + info -->
+    <div class="right-panel">
+
+      <div class="result-card" id="resultCard">
+        <div class="idle-state" id="idleState">
+          <div class="idle-icon">🏠</div>
+          <p>Fill in the details on the left<br>and click <strong>Predict Price</strong></p>
+        </div>
+        <div class="result-inner" id="resultInner">
+          <div class="result-label">Estimated Market Price</div>
+          <div class="price-main" id="priceMain">—</div>
+          <div class="price-mil"  id="priceMil">—</div>
+          <div class="conf-box">
+            <div class="conf-title">📊 Price Range (±15% confidence)</div>
+            <div class="conf-row"><span class="conf-key">Conservative Low</span><span class="conf-val" id="confLow">—</span></div>
+            <div class="conf-row"><span class="conf-key">Optimistic High</span><span class="conf-val" id="confHigh">—</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-card"><div class="ic-icon">🤖</div><div class="ic-label">Algorithm</div><div class="ic-val blue">Voting Ensemble</div></div>
+        <div class="info-card"><div class="ic-icon">🎯</div><div class="ic-label">Test Accuracy</div><div class="ic-val green">R² = 0.8656</div></div>
+        <div class="info-card"><div class="ic-icon">📊</div><div class="ic-label">Base Models</div><div class="ic-val blue">RF + GB</div></div>
+        <div class="info-card"><div class="ic-icon">🗄️</div><div class="ic-label">Dataset</div><div class="ic-val green">Zameen.com</div></div>
+      </div>
+
+      <div class="tips-card">
+        <div class="tips-title">💡 Factors That Affect Price</div>
+        <div class="tip"><div class="tip-dot"></div><span>DHA and Bahria Town societies command 20–40% premium over average.</span></div>
+        <div class="tip"><div class="tip-dot"></div><span>Islamabad and Lahore are the most expensive cities on average.</span></div>
+        <div class="tip"><div class="tip-dot"></div><span>Every additional Marla adds significantly to the predicted price.</span></div>
+        <div class="tip"><div class="tip-dot"></div><span>Penthouses and Farm Houses are priced higher than standard houses.</span></div>
+      </div>
+
+    </div><!-- /right-panel -->
+  </div><!-- /predict-main -->
+
+  <footer>
+    House Price Prediction · AI Final Semester Project ·
+    Dataset: <span>Zameen.com Pakistan</span> ·
+    Best Model: <span>Voting Ensemble R² = 0.87</span>
+  </footer>
+
+</div><!-- /tab-predict -->
+
+
+<div id="tab-dataset" class="tab-content">
+  <!-- Hero -->
+  <div class="ds-hero">
+    <div class="section-label">Cleaned Data</div>
+    <h2>Zameen.com <span>Dataset Explorer</span></h2>
+    <p>Browse, filter, and search the 77,027 clean listings used to train all models.</p>
+  </div>
+
+  <div class="ds-page">
+
+    <!-- Stat Cards -->
+    <div class="ds-stat-grid">
+      <div class="ds-stat-card">
+        <div class="ds-sc-icon">🗄️</div>
+        <div class="ds-sc-val blue">{{ ds_stats.total_rows | int | format_num }}</div>
+        <div class="ds-sc-lbl">Total Clean Rows</div>
+      </div>
+      <div class="ds-stat-card">
+        <div class="ds-sc-icon">📋</div>
+        <div class="ds-sc-val green">{{ ds_stats.total_cols }}</div>
+        <div class="ds-sc-lbl">Columns After Cleaning</div>
+      </div>
+      <div class="ds-stat-card">
+        <div class="ds-sc-icon">💰</div>
+        <div class="ds-sc-val gold">{{ ds_stats.median_price }}</div>
+        <div class="ds-sc-lbl">Median Price</div>
+      </div>
+      <div class="ds-stat-card">
+        <div class="ds-sc-icon">🏙️</div>
+        <div class="ds-sc-val blue">{{ ds_stats.cities }}</div>
+        <div class="ds-sc-lbl">Cities Covered</div>
+      </div>
+    </div>
+
+    <!-- Column Pills -->
+    <div class="ds-cols-row">
+      {% for col in ds_stats.columns %}
+      <span class="ds-col-pill">{{ col }}</span>
+      {% endfor %}
+    </div>
+
+    <!-- Breakdown Charts -->
+    <div class="ds-breakdown-grid">
+
+      <!-- By City -->
+      <div class="ds-breakdown-card">
+        <div class="ds-bc-title">🏙️ Listings by City</div>
+        {% set city_total = ds_stats.city_counts.values() | sum %}
+        {% for city, cnt in ds_stats.city_counts.items() %}
+        <div class="ds-bar-row">
+          <div class="ds-bar-label">{{ city }}</div>
+          <div class="ds-bar-track"><div class="ds-bar-fill" style="width:{{ (cnt/city_total*100)|round(1) }}%;background:var(--accent)"></div></div>
+          <div class="ds-bar-count">{{ cnt | int | format_num }}</div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- By Property Type -->
+      <div class="ds-breakdown-card">
+        <div class="ds-bc-title">🏠 Listings by Property Type</div>
+        {% set type_total = ds_stats.type_counts.values() | sum %}
+        {% set type_colors = ['var(--accent)','var(--accent-g)','var(--accent-o)','#a78bfa','#f472b6','var(--accent-r)','var(--muted)'] %}
+        {% for i, (ptype, cnt) in enumerate(ds_stats.type_counts.items()) %}
+        <div class="ds-bar-row">
+          <div class="ds-bar-label">{{ ptype }}</div>
+          <div class="ds-bar-track"><div class="ds-bar-fill" style="width:{{ (cnt/type_total*100)|round(1) }}%;background:{{ type_colors[i % type_colors|length] }}"></div></div>
+          <div class="ds-bar-count">{{ cnt | int | format_num }}</div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- By Area Category -->
+      <div class="ds-breakdown-card">
+        <div class="ds-bc-title">📐 Listings by Area Category</div>
+        {% set area_total = ds_stats.area_counts.values() | sum %}
+        {% set area_colors = ['var(--accent-g)','var(--accent)','var(--accent-o)','#a78bfa'] %}
+        {% for i, (acat, cnt) in enumerate(ds_stats.area_counts.items()) %}
+        <div class="ds-bar-row">
+          <div class="ds-bar-label">{{ acat }}</div>
+          <div class="ds-bar-track"><div class="ds-bar-fill" style="width:{{ (cnt/area_total*100)|round(1) }}%;background:{{ area_colors[i % area_colors|length] }}"></div></div>
+          <div class="ds-bar-count">{{ cnt | int | format_num }}</div>
+        </div>
+        {% endfor %}
+      </div>
+
+    </div><!-- /breakdown grid -->
+
+    <!-- Toolbar -->
+    <div class="ds-toolbar">
+      <span class="ds-toolbar-title">🔍 Browse Dataset</span>
+      <select class="ds-select" id="ds-filter-city" onchange="dsLoad(1)">
+        <option value="">All Cities</option>
+        {% for c in cities %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+      </select>
+      <select class="ds-select" id="ds-filter-type" onchange="dsLoad(1)">
+        <option value="">All Types</option>
+        {% for pt in property_types %}<option value="{{ pt }}">{{ pt }}</option>{% endfor %}
+      </select>
+      <input class="ds-search" id="ds-search" type="text" placeholder="Search by location / society…" oninput="dsDebouncedLoad()"/>
+      <span class="ds-count-badge" id="ds-count-badge">Loading…</span>
+    </div>
+
+    <!-- Table -->
+    <div class="ds-table-wrap">
+      <table class="ds-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Type</th>
+            <th>City</th>
+            <th>Location</th>
+            <th>Beds</th>
+            <th>Baths</th>
+            <th>Area (Marla)</th>
+            <th>Category</th>
+            <th>Price</th>
+          </tr>
+        </thead>
+        <tbody id="ds-tbody">
+          <!-- filled by JS -->
+        </tbody>
+      </table>
+      <div class="ds-pagination">
+        <span class="ds-pag-info" id="ds-pag-info">—</span>
+        <div class="ds-pag-btns" id="ds-pag-btns"></div>
+      </div>
+    </div>
+
+  </div><!-- /ds-page -->
+</div><!-- /tab-dataset -->
+
+
+<script>
+  // ── Flask data ──────────────────────────────────────────────
+  const cityLocations = {{ city_locations | tojson }};
+  const cityProvince  = {{ city_province  | tojson }};
+
+  // ── Tab switching ────────────────────────────────────────────
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    document.getElementById('btn-' + tab).classList.add('active');
+    document.getElementById('dash-nav').style.display = (tab === 'dashboard') ? 'flex' : 'none';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (tab === 'dataset' && !dsLoaded) dsLoad(1);
+  }
+
+  // ── Scroll to section inside dashboard ──────────────────────
+  function dashAnchor(e, sectionId) {
+    e.preventDefault();
+    if (!document.getElementById('tab-dashboard').classList.contains('active')) {
+      switchTab('dashboard');
+      setTimeout(() => {
+        const el = document.getElementById(sectionId);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 120);
+    } else {
+      const el = document.getElementById(sectionId);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  // ── Chart tabs ───────────────────────────────────────────────
+  function showChart(id, btn) {
+    document.querySelectorAll('.chart-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('chart-' + id).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  // ── Location dropdown ────────────────────────────────────────
+  function onCityChange() {
+    const city = document.getElementById('city').value;
+    const sel  = document.getElementById('location');
+    sel.innerHTML = '';
+    (cityLocations[city] || []).forEach(loc => {
+      const o = document.createElement('option');
+      o.value = loc; o.textContent = loc;
+      sel.appendChild(o);
+    });
+  }
+
+  // ── Slider sync ──────────────────────────────────────────────
+  function syncSlider(id, displayId) {
+    document.getElementById(displayId).textContent = document.getElementById(id).value;
+  }
+
+  // ── Auto area category ───────────────────────────────────────
+  function autoCategory() {
+    const v = parseFloat(document.getElementById('area_size').value);
+    let cat = '0-5 Marla';
+    if      (v > 15) cat = '15-20 Marla';
+    else if (v > 10) cat = '10-15 Marla';
+    else if (v > 5)  cat = '5-10 Marla';
+    document.getElementById('area_category').value = cat;
+  }
+
+  // ── Prediction ───────────────────────────────────────────────
+  async function doPrediction() {
+    const btn = document.getElementById('predictBtn');
+    const err = document.getElementById('errorBox');
+    err.style.display = 'none';
+    btn.classList.add('loading');
+    document.getElementById('btnText').textContent = 'Predicting…';
+
+    const city = document.getElementById('city').value;
+    const payload = {
+      property_type: document.getElementById('property_type').value,
+      city,
+      province_name: cityProvince[city] || 'Punjab',
+      baths:         document.getElementById('baths').value,
+      area_size:     document.getElementById('area_size').value,
+      area_category: document.getElementById('area_category').value,
+      bedrooms:      document.getElementById('bedrooms').value,
+      location:      document.getElementById('location').value,
+    };
+
+    try {
+      const res  = await fetch('/predict', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (data.success) { showResult(data); }
+      else              { showError(data.error || 'Prediction failed. Please try again.'); }
+    } catch (e) {
+      showError('Cannot connect to server. Make sure app.py is running.');
+    }
+
+    btn.classList.remove('loading');
+    document.getElementById('btnText').textContent = 'Predict Price';
+  }
+
+  function showResult(data) {
+    document.getElementById('idleState').style.display = 'none';
+    const inner = document.getElementById('resultInner');
+    inner.style.display = 'flex';
+    document.getElementById('priceMain').textContent = data.formatted;
+    document.getElementById('priceMil').textContent  = '≈ ' + data.in_millions;
+    document.getElementById('confLow').textContent   = data.confidence_low;
+    document.getElementById('confHigh').textContent  = data.confidence_high;
+    document.getElementById('resultCard').classList.add('has-result');
+    inner.classList.remove('pop');
+    void inner.offsetWidth;
+    inner.classList.add('pop');
+  }
+
+  function showError(msg) {
+    const err = document.getElementById('errorBox');
+    err.textContent = '⚠ ' + msg;
+    err.style.display = 'block';
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  DATASET TAB LOGIC
+  // ═══════════════════════════════════════════════════════════
+  let dsCurrentPage = 1;
+  let dsTotalRows   = 0;
+  let dsLoaded      = false;
+  const DS_PER_PAGE = 50;
+
+  // Badge colours per property type
+  const badgeClass = {
+    'House':         'ds-badge-house',
+    'Flat':          'ds-badge-flat',
+    'Farm House':    'ds-badge-farm',
+    'Lower Portion': 'ds-badge-lower',
+    'Upper Portion': 'ds-badge-upper',
+    'Penthouse':     'ds-badge-pent',
+    'Room':          'ds-badge-room',
+  };
+
+  function dsShowSkeleton() {
+    const tbody = document.getElementById('ds-tbody');
+    let html = '';
+    for (let i = 0; i < 10; i++) {
+      html += `<tr class="ds-skeleton-row">
+        ${Array(9).fill('<td><div class="ds-skel"></div></td>').join('')}
+      </tr>`;
+    }
+    tbody.innerHTML = html;
+  }
+
+  async function dsLoad(page) {
+    dsCurrentPage = page;
+    dsShowSkeleton();
+
+    const city   = document.getElementById('ds-filter-city').value;
+    const ptype  = document.getElementById('ds-filter-type').value;
+    const search = document.getElementById('ds-search').value;
+
+    const params = new URLSearchParams({ page, per_page: DS_PER_PAGE });
+    if (city)   params.append('city',   city);
+    if (ptype)  params.append('type',   ptype);
+    if (search) params.append('search', search);
+
+    try {
+      const res  = await fetch('/dataset?' + params);
+      const data = await res.json();
+      dsTotalRows = data.total;
+      dsLoaded    = true;
+
+      dsRenderRows(data.rows, (page - 1) * DS_PER_PAGE);
+      dsRenderPagination(data.total, page);
+
+      const badge = document.getElementById('ds-count-badge');
+      badge.textContent = `${data.total.toLocaleString()} rows found`;
+    } catch(e) {
+      document.getElementById('ds-tbody').innerHTML =
+        '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--muted)">⚠ Failed to load. Make sure app.py is running.</td></tr>';
+    }
+  }
+
+  function dsRenderRows(rows, offset) {
+    const tbody = document.getElementById('ds-tbody');
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2.5rem;color:var(--muted)">No records match your filters.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map((r, i) => {
+      const bc = badgeClass[r.property_type] || 'ds-badge-room';
+      return `<tr>
+        <td style="color:var(--muted);font-family:'DM Mono',monospace;font-size:.72rem">${(offset+i+1).toLocaleString()}</td>
+        <td><span class="ds-badge ${bc}">${r.property_type}</span></td>
+        <td><span class="ds-badge ds-badge-house" style="background:rgba(59,130,246,.06)">${r.city}</span></td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.location}">${r.location}</td>
+        <td style="text-align:center">${r.bedrooms}</td>
+        <td style="text-align:center">${r.baths}</td>
+        <td style="text-align:center;font-family:'DM Mono',monospace">${r['Area Size']}</td>
+        <td><span style="font-size:.72rem;color:var(--muted)">${r['Area Category']}</span></td>
+        <td class="price">${r.price_fmt}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function dsRenderPagination(total, current) {
+    const totalPages = Math.ceil(total / DS_PER_PAGE);
+    const start = (current - 1) * DS_PER_PAGE + 1;
+    const end   = Math.min(current * DS_PER_PAGE, total);
+
+    document.getElementById('ds-pag-info').textContent =
+      `Showing ${start.toLocaleString()}–${end.toLocaleString()} of ${total.toLocaleString()}`;
+
+    const btns = document.getElementById('ds-pag-btns');
+    let html = '';
+
+    html += `<button class="ds-pag-btn" onclick="dsLoad(${current-1})" ${current===1?'disabled':''}>‹</button>`;
+
+    // page window
+    let lo = Math.max(1, current - 2);
+    let hi = Math.min(totalPages, lo + 4);
+    lo = Math.max(1, hi - 4);
+
+    if (lo > 1)           html += `<button class="ds-pag-btn" onclick="dsLoad(1)">1</button>${lo>2?'<span style="padding:0 4px;color:var(--muted)">…</span>':''}`;
+    for (let p = lo; p <= hi; p++)
+      html += `<button class="ds-pag-btn ${p===current?'active':''}" onclick="dsLoad(${p})">${p}</button>`;
+    if (hi < totalPages)  html += `${hi<totalPages-1?'<span style="padding:0 4px;color:var(--muted)">…</span>':''}<button class="ds-pag-btn" onclick="dsLoad(${totalPages})">${totalPages}</button>`;
+
+    html += `<button class="ds-pag-btn" onclick="dsLoad(${current+1})" ${current===totalPages?'disabled':''}>›</button>`;
+
+    btns.innerHTML = html;
+  }
+
+  // debounce search input
+  let dsDebounceTimer;
+  function dsDebouncedLoad() {
+    clearTimeout(dsDebounceTimer);
+    dsDebounceTimer = setTimeout(() => dsLoad(1), 350);
+  }
+
+  // ── Init ─────────────────────────────────────────────────────
+  onCityChange();
+  autoCategory();
+</script>
+</body>
+</html>
